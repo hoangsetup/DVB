@@ -8,6 +8,8 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 
+import org.apache.http.impl.client.TunnelRefusedException;
+
 import net.sf.andpdf.nio.ByteBuffer;
 import net.sf.andpdf.pdfviewer.gui.FullScrollView;
 import net.sf.andpdf.refs.HardReference;
@@ -21,7 +23,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.RectF;
-import android.graphics.Bitmap.Config;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -31,9 +32,10 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -41,6 +43,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.sun.pdfview.PDFFile;
 import com.sun.pdfview.PDFImage;
@@ -49,6 +52,7 @@ import com.sun.pdfview.PDFPaint;
 import com.sun.pdfview.decrypt.PDFAuthenticationFailureException;
 import com.sun.pdfview.decrypt.PDFPassword;
 import com.sun.pdfview.font.PDFFont;
+import com.test.dvb.var.Variables;
 
 /**
  * U:\Android\android-sdk-windows-1.5_r1\tools\adb push u:\Android\simple_T.pdf
@@ -57,6 +61,9 @@ import com.sun.pdfview.font.PDFFont;
  * @author ferenc.hechler
  */
 public abstract class PdfViewerActivity extends Activity {
+
+	float x1 = 0, x2;
+	float y1 = 0, y2;
 
 	private static final int STARTPAGE = 1;
 	private static final float STARTZOOM = 1.0f;
@@ -230,6 +237,16 @@ public abstract class PdfViewerActivity extends Activity {
 			parsePDF(pdffilename, password);
 			setContentView(mGraphView);
 			startRenderThread(mPage, mZoom);
+			//
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					getNEXT();
+				}
+			}).start();
+			//
 		} catch (PDFAuthenticationFailureException e) {
 			setContentView(getPdfPasswordLayoutResource());
 			final EditText etPW = (EditText) findViewById(getPdfPasswordEditField());
@@ -271,6 +288,9 @@ public abstract class PdfViewerActivity extends Activity {
 						showPage(page, zoom);
 						// Debug.stopMethodTracing();
 						// Log.e(TAG, "DEBUG.STOP");
+
+						// My code
+						//
 
 						/*
 						 * if (progress != null) progress.dismiss();
@@ -411,6 +431,21 @@ public abstract class PdfViewerActivity extends Activity {
 	}
 
 	private void nextPage() {
+		//
+//		if (Variables.PAGENEXT != null) {
+//			Log.e("KKKK", "Not NULLLLLL");
+//			mGraphView.setPageBitmap(Variables.PAGENEXT);
+//			mGraphView.updateImage();
+//			return;
+//		}
+		if(Variables.allDoc.size() >= mPage){
+			mGraphView.setPageBitmap(Variables.allDoc.get(mPage));
+			mGraphView.updateImage();
+			return;
+		}
+
+		//
+
 		if (mPdfFile != null) {
 			if (mPage < mPdfFile.getNumPages()) {
 				mPage += 1;
@@ -424,6 +459,7 @@ public abstract class PdfViewerActivity extends Activity {
 	}
 
 	private void prevPage() {
+
 		if (mPdfFile != null) {
 			if (mPage > 1) {
 				mPage -= 1;
@@ -962,4 +998,93 @@ public abstract class PdfViewerActivity extends Activity {
 	public abstract int getPdfPasswordExitButton(); // R.id.btExit
 
 	public abstract int getPdfPageNumberEditField(); // R.id.pagenum_edit
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+
+		// TODO Auto-generated method stub
+		switch (event.getAction()) {
+		// when user first touches the screen we get x and y coordinate
+		case MotionEvent.ACTION_DOWN: {
+			x1 = event.getX();
+			y1 = event.getY();
+			break;
+		}
+		case MotionEvent.ACTION_UP: {
+			x2 = event.getX();
+			y2 = event.getY();
+
+			// if left to right sweep event on screen
+			if (x1 < x2) {
+				Toast.makeText(this, "Left to Right Swap Performed",
+						Toast.LENGTH_LONG).show();
+				prevPage();
+			}
+
+			// if right to left sweep event on screen
+			if (x1 > x2) {
+				Toast.makeText(this, "Right to Left Swap Performed",
+						Toast.LENGTH_LONG).show();
+				nextPage();
+			}
+
+			// if UP to Down sweep event on screen
+			if (y1 < y2) {
+				// Toast.makeText(this, "UP to Down Swap Performed",
+				// Toast.LENGTH_LONG).show();
+			}
+
+			// if Down to UP sweep event on screen
+			if (y1 > y2) {
+				// Toast.makeText(this, "Down to UP Swap Performed",
+				// Toast.LENGTH_LONG).show();
+			}
+			break;
+		}
+		}
+		return false;
+
+	}
+
+	// //
+	public void getNEXT() {
+		try {
+			// free memory from previous page
+			// mGraphView.setPageBitmap(null);
+			// mGraphView.updateImage();
+
+			// Only load the page if it's a different page (i.e. not just
+			// changing the zoom level)
+			// if (mPdfPage == null || mPdfPage.getPageNumber() != pag) {
+			for (int i = 0; i < mPdfFile.getNumPages(); i++) {
+
+				mPdfPage = mPdfFile.getPage(i, true);
+				// }
+				// int num = mPdfPage.getPageNumber();
+				// int maxNum = mPdfFile.getNumPages();
+				float width = mPdfPage.getWidth();
+				float height = mPdfPage.getHeight();
+				// String pageInfo= new File(pdffilename).getName() + " - " +
+				// num
+				// +"/"+maxNum+ ": " + width + "x" + height;
+				// mGraphView.showText(pageInfo);
+				// Log.i(TAG, pageInfo);
+				RectF clip = null;
+				// middleTime = System.currentTimeMillis();
+				Bitmap bi = mPdfPage.getImage((int) (width * mZoom),
+						(int) (height * mZoom), clip, true, true);
+				//Variables.PAGENEXT = bi;
+				Variables.allDoc.add(bi);
+			}
+			// mGraphView.setPageBitmap(bi);
+			// mGraphView.updateImage();
+
+			// if (progress != null)
+			// progress.dismiss();
+		} catch (Throwable e) {
+			Log.e(TAG, e.getMessage(), e);
+			// mGraphView.showText("Exception: " + e.getMessage());
+		}
+	}
+	// //
 }

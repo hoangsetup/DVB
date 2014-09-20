@@ -1,6 +1,9 @@
 package com.test.dvb;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Vector;
 
 import android.app.Activity;
@@ -176,7 +179,9 @@ public class OpenActivity extends Activity {
 				myVector.add(tmp);
 			}
 		}
-
+		
+		adp = new OpenAdapter(OpenActivity.this, R.layout.item_listview_open,
+				myVector);
 		adp = new OpenAdapter(OpenActivity.this, R.layout.item_listview_open,
 				myVector);
 
